@@ -1,24 +1,43 @@
-from flask import Flask, render_template, request
-import pickle
+import streamlit as st
+import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-app = Flask(__name__)
+# Load model and vectorizer
+model = joblib.load('LinearSVCTuned.pkl')
+vectorizer = joblib.load('tfidfvectoizer.pkl')
 
+# Load stopwords
 with open("stopwords.txt", "r") as file:
     stopwords = file.read().splitlines()
 
-vectorizer = TfidfVectorizer(stop_words=stopwords, lowercase=True, vocabulary=pickle.load(open("tfidfvectoizer.pkl", "rb")))
-model = pickle.load(open("LinearSVCTuned.pkl", 'rb'))
+# Page title and description
+st.title('🚨 Cyberbullying Detection App 🚨')
+st.write("""
+    This app uses Machine Learning to detect potential cyberbullying in text messages. Enter some text, and the model will predict if the content could be considered bullying or not.
+""")
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    prediction = None
-    if request.method == 'POST':
-        user_input = request.form['text']
-        transformed_input = vectorizer.fit_transform([user_input])
-        prediction = model.predict(transformed_input)[0]
-    
-    return render_template('index.html', prediction=prediction)
+# Input text area
+st.subheader("Enter the text to analyze:")
+user_input = st.text_area("Type your message here...")
 
-if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0')
+# Button for submission
+if st.button('Analyze Text'):
+    if user_input:
+        # Preprocessing the input
+        data = [user_input]
+        tfidf_vector = TfidfVectorizer(stop_words=stopwords, lowercase=True, vocabulary=joblib.load(open("tfidfvectoizer.pkl", "rb")))
+        preprocessed_data = tfidf_vector.fit_transform(data)
+
+        # Prediction
+        prediction = model.predict(preprocessed_data)[0]
+
+        # Display result
+        if prediction == 1:
+            st.markdown("Please be mindful of the language used")
+            st.error("### ⚠️ **The content is considered as Bullying**")
+            
+        else:
+            st.markdown("No harmful intent detected")
+            st.success("### ✅ **The content is not considered as Bullying**")
+    else:
+        st.warning("Please enter some text to analyze.")
